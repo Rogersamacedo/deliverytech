@@ -26,5 +26,5 @@ Sistema de delivery desenvolvido com Spring Boot e Java 21.
 - Banco: H2 em memória
 - Profile: development
 ## 👨‍💻 Desenvolvedor
-[Seu Nome] - [Sua Turma]
+Rogério Sá de Macedo - Arquitetura de Software]
 Desenvolvido com JDK 21 e Spring Boot 3.2.x
