@@ -1,0 +1,8 @@
+target/
+.git/
+.idea/
+.vscode/
+*.tar.gz
+logs/
+.env
+HELP.md
