@@ -9,6 +9,8 @@ import com.deliverytech.delivery_api.repository.RestauranteRepository;
 import com.deliverytech.delivery_api.service.ProdutoService;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,13 +22,21 @@ import java.util.stream.Collectors;
 @Transactional
 public class ProdutoServiceImpl implements ProdutoService {
 
+    // Nomes dos caches usados neste service
+    private static final String CACHE_PRODUTO = "produtos";
+    private static final String CACHE_POR_CATEGORIA = "produtosPorCategoria";
+    private static final String CACHE_POR_RESTAURANTE = "produtosPorRestaurante";
+
     @Autowired
     private ProdutoRepository produtoRepository;
 
     @Autowired
     private RestauranteRepository restauranteRepository;
 
+    // Qualquer alteração nos produtos invalida todos os caches de produto,
+    // para nunca devolver dado desatualizado.
     @Override
+    @CacheEvict(value = { CACHE_PRODUTO, CACHE_POR_CATEGORIA, CACHE_POR_RESTAURANTE }, allEntries = true)
     public ProdutoResDTO cadastrarProduto(ProdutoReqDTO dto) {
         // buscando o restaurante pelo id e lançando exceção caso não seja encontrado
         Restaurante restaurante = restauranteRepository.findById(dto.getRestauranteId())
@@ -42,6 +52,7 @@ public class ProdutoServiceImpl implements ProdutoService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CACHE_PRODUTO, key = "#id")
     public ProdutoResDTO buscarProdutoPorId(Long id) {
         Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado: " + id));
@@ -49,6 +60,7 @@ public class ProdutoServiceImpl implements ProdutoService {
     }
 
     @Override
+    @CacheEvict(value = { CACHE_PRODUTO, CACHE_POR_CATEGORIA, CACHE_POR_RESTAURANTE }, allEntries = true)
     public ProdutoResDTO atualizarProduto(Long id, ProdutoReqDTO dto) {
         Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado: " + id));
@@ -70,6 +82,7 @@ public class ProdutoServiceImpl implements ProdutoService {
     }
 
     @Override
+    @CacheEvict(value = { CACHE_PRODUTO, CACHE_POR_CATEGORIA, CACHE_POR_RESTAURANTE }, allEntries = true)
     public void removerProduto(Long id) {
         Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado: " + id));
@@ -80,6 +93,7 @@ public class ProdutoServiceImpl implements ProdutoService {
     }
 
     @Override
+    @CacheEvict(value = { CACHE_PRODUTO, CACHE_POR_CATEGORIA, CACHE_POR_RESTAURANTE }, allEntries = true)
     public ProdutoResDTO alterarDisponibilidade(Long id) {
         Produto produto = produtoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Produto não encontrado: " + id));
@@ -92,6 +106,7 @@ public class ProdutoServiceImpl implements ProdutoService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CACHE_POR_CATEGORIA, key = "#categoria")
     public List<ProdutoResDTO> buscarProdutosPorCategoria(String categoria) {
         return produtoRepository.findByCategoriaAndDisponivelTrue(categoria)
                 .stream()
@@ -99,6 +114,8 @@ public class ProdutoServiceImpl implements ProdutoService {
                 .collect(Collectors.toList());
     }
 
+    // Busca por texto livre: não é cacheada, porque cada termo digitado
+    // gera uma chave diferente (pouco reaproveitamento e memória crescente).
     @Override
     @Transactional(readOnly = true)
     public List<ProdutoResDTO> buscarProdutosPorNome(String nome) {
@@ -110,6 +127,7 @@ public class ProdutoServiceImpl implements ProdutoService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = CACHE_POR_RESTAURANTE, key = "#restauranteId + '-' + #disponivel")
     public List<ProdutoResDTO> buscarProdutosPorRestaurante(Long restauranteId, Boolean disponivel) {
         List<Produto> produtos;
 
